@@ -1,11 +1,14 @@
 # load libraries
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
+import pandas as pd
+
 import sys
-import progressbar
 import pdb
+from pathlib import Path
+
+import progressbar
+
 
 def out_of_bounds(contour):
     M = cv2.moments(contour)
@@ -44,7 +47,7 @@ def add_to_background(frame, old_background_image, amount = 0.05):
     final = cv2.convertScaleAbs(old_background_image)
     return final
 
-def find_background(capture):
+def find_background(capture, save_to_disk = True):
 
     print("calculating the background image")
 
@@ -61,6 +64,9 @@ def find_background(capture):
         capture.set(1, i)
         _, current_image = capture.read()
         background = add_to_background(current_image, background)
+
+    if save_to_disk:
+        cv2.imwrite("background.jpg", background)
     return background
 
 def test_video(capture):
@@ -90,7 +96,7 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     else:
         masked_data = gray
 
-    _, thresh = cv2.threshold(masked_data, 20, 255, cv2.THRESH_BINARY)
+    _, thresh = cv2.threshold(masked_data, 25, 255, cv2.THRESH_BINARY)
     contours = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
 
     # we now add the step of excluding contours that are too big or too small
@@ -128,7 +134,23 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
             loc = None
     return frame, loc, number_frames_without_fish
 
+def create_empty_df(number_rows):
+    df = pd.DataFrame(index=np.arange(0, number_rows), columns=('frame', 'x', 'y', 'fish') )
+    return df
 
+def save_data(df, max_row = None):
+    if max_row is not None:
+        df = df.iloc[1:max_row]
+    print("shape of dataframe to save: {}".format(df.shape))
+    try:
+        df = df.interpolate(method='akima')
+    except:
+        print("too many NAs to interpolate")
+
+    print(df.fish.value_counts())
+    print("frames: ".format(df.shape[0]))
+
+    df.to_csv("footprints.csv")
 
 if __name__ == "__main__":
 
@@ -141,8 +163,14 @@ if __name__ == "__main__":
     # print things to the user
     width, height, number_frames, fps = get_video_info(cap)
 
+    # create empty dataframe to populate
+    df = create_empty_df(number_frames)
+
     # find the background of the image
-    background = find_background(cap)
+    if Path("background.jpg").is_file():
+        background = cv2.imread("background.jpg")
+    else:
+        background = find_background(cap)
 
     # Loop through frames
     frame_number = 1
@@ -158,10 +186,23 @@ if __name__ == "__main__":
             background = add_to_background(frame, background, 0.1)
             print("frame {}".format(frame_number))
 
+        if frame_number % 200 == 0:
+            save_data(df, frame_number)
+
         frame, previous_location, frames_missing = draw_largest_contour(frame, previous_location, frames_missing)
+
+        # add location to DataFrame
+        if frames_missing > 0:
+            df.loc[frame_number] = [frame_number, np.nan, np.nan, "missing"]
+        elif frames_missing == 0:
+            df.loc[frame_number] = [frame_number, previous_location[0], previous_location[1], "found"]
+
+        previous_frame = frame
 
         frame_number += 1
 
+
         cv2.imshow('frame',frame)
-        cv2.waitKey(20)
+        cv2.waitKey(5)
 cv2.destroyAllWindows()
+save_data(df)
