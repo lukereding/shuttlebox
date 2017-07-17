@@ -106,12 +106,12 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     else:
         masked_data = gray
 
-    _, thresh = cv2.threshold(masked_data, 20, 255, cv2.THRESH_BINARY)
+    _, thresh = cv2.threshold(masked_data, 15, 255, cv2.THRESH_BINARY)
     contours = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
 
-
-    cv2.imshow('thresh', thresh)
-    cv2.imshow('gray', diff)
+    #
+    # cv2.imshow('thresh', thresh)
+    # cv2.imshow('gray', diff)
 
     # we now add the step of excluding contours that are too big or too small
     contours_right_size = [c for c in contours if cv2.contourArea(c) < 700 and cv2.contourArea(c) > 50]
@@ -154,14 +154,14 @@ def create_empty_df(number_rows):
 def save_data(df, max_row = None):
     if max_row is not None:
         df = df.iloc[1:max_row]
-    print("shape of dataframe to save: {}".format(df.shape))
     try:
         df = df.interpolate(method='akima')
     except:
-        print("too many NAs to interpolate")
+        x = "oops"
+        # print("too many NAs to interpolate")
 
-    print(df.fish.value_counts())
-    print("frames: ".format(df.shape[0]))
+    # print(df.fish.value_counts())
+    # print("frames: ".format(df.shape[0]))
 
     df.to_csv("footprints.csv")
 
@@ -175,6 +175,9 @@ if __name__ == "__main__":
 
     # print things to the user
     width, height, number_frames, fps = get_video_info(cap)
+
+    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+    out = cv2.VideoWriter('tracked.avi', fourcc, 60, (int(width), int(height)), True)
 
     # create empty dataframe to populate
     df = create_empty_df(number_frames)
@@ -193,21 +196,25 @@ if __name__ == "__main__":
     # reset capture index
     cap.set(1, frame_number)
 
-    while frame_number < number_frames:
+    print("\n\ntracking the fish")
+
+    bar = progressbar.ProgressBar()
+
+    # while frame_number < number_frames:
+    for i in bar(range(1, number_frames)):
         frame_number = int(cap.get(1))
-        print(frame_number)
 
         _, frame = cap.read()
 
         # update background image every x frames
         if frame_number % 200 ==  0:
             background = add_to_background(frame, background, 0.05)
-            print("frame {}".format(frame_number))
+            # print("frame {}".format(frame_number))
 
         if frame_number % 200 == 0:
             save_data(df, frame_number)
 
-        print("previous location: {}".format(previous_location))
+        # print("previous location: {}".format(previous_location))
         frame, previous_location, frames_missing = draw_largest_contour(frame, previous_location, frames_missing)
 
         # add location to DataFrame
@@ -218,10 +225,9 @@ if __name__ == "__main__":
 
         previous_frame = frame
 
-        # frame_number += 1
+        out.write(frame)
 
-
-        cv2.imshow('frame',frame)
+        # cv2.imshow('frame',frame)
         cv2.waitKey(5)
 cv2.destroyAllWindows()
 save_data(df)
