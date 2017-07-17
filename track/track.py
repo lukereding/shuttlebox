@@ -10,10 +10,20 @@ from pathlib import Path
 import progressbar
 
 
+def get_centroid(contour):
+    try:
+        M = cv2.moments(contour)
+        cx = int(M['m10']/M['m00'])
+        cy = int(M['m01']/M['m00'])
+        return (cx, cy)
+    except:
+        return None
+
+
 def out_of_bounds(contour):
     M = cv2.moments(contour)
     cY = int(M["m01"] / M["m00"])
-    if cY > 430 or cY < 60:
+    if cY > 400 or cY < 60:
         return True
     else:
         return False
@@ -60,7 +70,7 @@ def find_background(capture, save_to_disk = True):
     cap.set(1, 1)
     _, background = capture.read()
 
-    for i in bar(range(1, 200)):
+    for i in bar(range(1, 2000, 10)):
         capture.set(1, i)
         _, current_image = capture.read()
         background = add_to_background(current_image, background)
@@ -82,8 +92,8 @@ def get_aspect_ratio(contour):
 def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     """Returns the frame with the largest contour drawn on it. """
     # take difference image, blur, convert to grey, threshold, find contours
-    diff = cv2.subtract(frame, background)
-    blurred = cv2.blur(diff, (5,5))
+    diff = cv2.subtract(background, frame)
+    blurred = cv2.blur(diff, (7,7))
     gray = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
 
     # at this point, let's restrict our search for the fish
@@ -96,35 +106,37 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     else:
         masked_data = gray
 
-    _, thresh = cv2.threshold(masked_data, 25, 255, cv2.THRESH_BINARY)
+    _, thresh = cv2.threshold(masked_data, 20, 255, cv2.THRESH_BINARY)
     contours = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
 
+
+    cv2.imshow('thresh', thresh)
+    cv2.imshow('gray', diff)
+
     # we now add the step of excluding contours that are too big or too small
-    contours_right_size = [c for c in contours if cv2.contourArea(c) < 700 and cv2.contourArea(c) > 20]
+    contours_right_size = [c for c in contours if cv2.contourArea(c) < 700 and cv2.contourArea(c) > 50]
 
     # we also exclude contours that are too long
     contours_right_size_shape = [c for c in contours_right_size if get_aspect_ratio(c) < 10 and get_aspect_ratio(c) > 0.2]
 
+    # or near the tank edges
     contours_filtered = [c for c in contours_right_size_shape if out_of_bounds(c) == False]
-
-    # exclude contours that are too close to the bottom of the tank
-    # contours_right_size_shape = [c for c in contours if get_aspect_ratio(c) < 10 and get_aspect_ratio(c) > 0.2]
 
     font = cv2.FONT_HERSHEY_SIMPLEX
 
     if len(contours_filtered) > 0:
         number_frames_without_fish = 0
         # if there are any contours remaining, we take the one closest to the middle of the tank
-        c = min(contours_right_size_shape, key = distance_to_middle)
-        cv2.drawContours(frame,[c],0,(124,23,199),-1)
-        cv2.putText(frame, str(previous_location), (50,50), font, 1,(124,23,199),2,cv2.LINE_AA)
-        M = cv2.moments(c)
+        best_guess = min(contours_filtered, key = distance_to_middle)
+        cv2.drawContours(frame,[best_guess],0,(124,23,199),-1)
+        M = cv2.moments(best_guess)
         try:
             cx = int(M['m10']/M['m00'])
             cy = int(M['m01']/M['m00'])
             loc = (cx, cy)
         except:
             loc = previous_location
+        cv2.putText(frame, str(loc), (50,50), font, 1,(124,23,199),2,cv2.LINE_AA)
     else:
         number_frames_without_fish += 1
         cv2.putText(frame, str("ain't nobody home!!"), (200,200), font, 2,(124,23,199),2,cv2.LINE_AA)
@@ -132,6 +144,7 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
             loc = previous_location
         else:
             loc = None
+
     return frame, loc, number_frames_without_fish
 
 def create_empty_df(number_rows):
@@ -177,18 +190,24 @@ if __name__ == "__main__":
     previous_location = None
     frames_missing = 0
 
+    # reset capture index
+    cap.set(1, frame_number)
+
     while frame_number < number_frames:
+        frame_number = int(cap.get(1))
         print(frame_number)
+
         _, frame = cap.read()
 
         # update background image every x frames
         if frame_number % 200 ==  0:
-            background = add_to_background(frame, background, 0.1)
+            background = add_to_background(frame, background, 0.05)
             print("frame {}".format(frame_number))
 
         if frame_number % 200 == 0:
             save_data(df, frame_number)
 
+        print("previous location: {}".format(previous_location))
         frame, previous_location, frames_missing = draw_largest_contour(frame, previous_location, frames_missing)
 
         # add location to DataFrame
@@ -199,7 +218,7 @@ if __name__ == "__main__":
 
         previous_frame = frame
 
-        frame_number += 1
+        # frame_number += 1
 
 
         cv2.imshow('frame',frame)
