@@ -8,6 +8,7 @@ import pdb
 from pathlib import Path
 
 import progressbar
+import subprocess
 
 
 def get_centroid(contour):
@@ -23,7 +24,7 @@ def get_centroid(contour):
 def out_of_bounds(contour):
     M = cv2.moments(contour)
     cY = int(M["m01"] / M["m00"])
-    if cY > 400 or cY < 60:
+    if cY > 600 or cY < 150:
         return True
     else:
         return False
@@ -97,7 +98,7 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     gray = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
 
     # at this point, let's restrict our search for the fish
-    if previous_location is not None or number_frames_without_fish < 20:
+    if previous_location is not None or number_frames_without_fish < 50:
         height, width = gray.shape
         circle_img = np.zeros((height, width), np.uint8)
         cv2.circle(circle_img, previous_location, 100, 1, thickness=-1)
@@ -114,7 +115,7 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     # cv2.imshow('gray', diff)
 
     # we now add the step of excluding contours that are too big or too small
-    contours_right_size = [c for c in contours if cv2.contourArea(c) < 700 and cv2.contourArea(c) > 50]
+    contours_right_size = [c for c in contours if cv2.contourArea(c) < 1000 and cv2.contourArea(c) > 100]
 
     # we also exclude contours that are too long
     contours_right_size_shape = [c for c in contours_right_size if get_aspect_ratio(c) < 10 and get_aspect_ratio(c) > 0.2]
@@ -176,7 +177,13 @@ if __name__ == "__main__":
     # print things to the user
     width, height, number_frames, fps = get_video_info(cap)
 
-    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+    print("""
+    video size: {} x {}
+    total number of frames: {}
+    fps: {}
+    """.format(width, height, number_frames, fps))
+
+    fourcc = cv2.VideoWriter_fourcc(*'avc1')
     out = cv2.VideoWriter('tracked.avi', fourcc, 60, (int(width), int(height)), True)
 
     # create empty dataframe to populate
@@ -201,13 +208,13 @@ if __name__ == "__main__":
     bar = progressbar.ProgressBar()
 
     # while frame_number < number_frames:
-    for i in bar(range(1, number_frames)):
+    for i in bar(range(1, number_frames - 2)):
         frame_number = int(cap.get(1))
 
         _, frame = cap.read()
 
         # update background image every x frames
-        if frame_number % 200 ==  0:
+        if frame_number % 50 ==  0:
             background = add_to_background(frame, background, 0.05)
             # print("frame {}".format(frame_number))
 
@@ -231,3 +238,7 @@ if __name__ == "__main__":
         cv2.waitKey(5)
 cv2.destroyAllWindows()
 save_data(df)
+# plot the results
+bashCommand = "Rscript plot_tracks.R"
+process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+output, error = process.communicate()
