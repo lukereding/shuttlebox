@@ -22,9 +22,8 @@ def get_centroid(contour):
 
 
 def out_of_bounds(contour):
-    M = cv2.moments(contour)
-    cY = int(M["m01"] / M["m00"])
-    if cY > 600 or cY < 150:
+    x,y = get_centroid(contour)
+    if y > 600 or y < 150 or x > 1100 or x < 170:
         return True
     else:
         return False
@@ -140,7 +139,7 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
         cv2.putText(frame, str(loc), (50,50), font, 1,(124,23,199),2,cv2.LINE_AA)
     else:
         number_frames_without_fish += 1
-        cv2.putText(frame, str("ain't nobody home!!"), (200,200), font, 2,(124,23,199),2,cv2.LINE_AA)
+        # cv2.putText(frame, str("ain't nobody home!!"), (200,200), font, 2,(124,23,199),2,cv2.LINE_AA)
         if number_frames_without_fish < 20:
             loc = previous_location
         else:
