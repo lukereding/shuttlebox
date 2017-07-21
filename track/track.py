@@ -20,10 +20,9 @@ def get_centroid(contour):
     except:
         return None
 
-
 def out_of_bounds(contour):
     x,y = get_centroid(contour)
-    if y > 600 or y < 150 or x > 1100 or x < 170:
+    if y > 550 or y < 140 or x > 1150 or x < 150:
         return True
     else:
         return False
@@ -32,7 +31,7 @@ def distance_to_middle(contour):
     '''Calculate the distance between the contour and the middle of the tank along the x-axis.'''
 
     # hard-coded for stupid reassons
-    middle_of_tank = (480, 272)
+    middle_of_tank = (960, 540)
 
     # find the center of the contour
     M = cv2.moments(contour)
@@ -140,7 +139,7 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     else:
         number_frames_without_fish += 1
         # cv2.putText(frame, str("ain't nobody home!!"), (200,200), font, 2,(124,23,199),2,cv2.LINE_AA)
-        if number_frames_without_fish < 20:
+        if number_frames_without_fish < 50:
             loc = previous_location
         else:
             loc = None
@@ -151,7 +150,7 @@ def create_empty_df(number_rows):
     df = pd.DataFrame(index=np.arange(0, number_rows), columns=('frame', 'x', 'y', 'fish') )
     return df
 
-def save_data(df, max_row = None):
+def save_data(df, max_row = None, name):
     if max_row is not None:
         df = df.iloc[1:max_row]
     try:
@@ -160,15 +159,16 @@ def save_data(df, max_row = None):
         x = "oops"
         # print("too many NAs to interpolate")
 
-    # print(df.fish.value_counts())
-    # print("frames: ".format(df.shape[0]))
-
-    df.to_csv("footprints.csv")
+    df.to_csv("{}.csv".format(name))
 
 if __name__ == "__main__":
 
     # read in video, parse arguments
-    cap = cv2.VideoCapture(sys.argv[1])
+    filename = sys.argv[1]
+    cap = cv2.VideoCapture(filename)
+
+    # get video name
+    name = filename.split('.', 1)[-2]
 
     # test to make sure opencv can read the video
     test_video(cap)
@@ -183,7 +183,7 @@ if __name__ == "__main__":
     """.format(width, height, number_frames, fps))
 
     fourcc = cv2.VideoWriter_fourcc(*'avc1')
-    out = cv2.VideoWriter('tracked.avi', fourcc, 60, (int(width), int(height)), True)
+    out = cv2.VideoWriter('{}_tracked.avi'.format(name), fourcc, 30, (int(width), int(height)), True)
 
     # create empty dataframe to populate
     df = create_empty_df(number_frames)
@@ -218,7 +218,7 @@ if __name__ == "__main__":
             # print("frame {}".format(frame_number))
 
         if frame_number % 200 == 0:
-            save_data(df, frame_number)
+            save_data(df, frame_number-2, name)
 
         # print("previous location: {}".format(previous_location))
         frame, previous_location, frames_missing = draw_largest_contour(frame, previous_location, frames_missing)
@@ -236,8 +236,14 @@ if __name__ == "__main__":
         # cv2.imshow('frame',frame)
         cv2.waitKey(5)
 cv2.destroyAllWindows()
-save_data(df)
+save_data(df, name = name)
+
+# this is stupid, but:
+df = pd.read_csv("footprints.csv")
+df = df.interpolate('akima')
+csv_name = "{}_interpolated.csv".format(name)
+df.to_csv(csv_name)
 # plot the results
-bashCommand = "Rscript plot_tracks.R"
+bashCommand = "Rscript plot_tracks.R {}".format(csv_name)
 process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
 output, error = process.communicate()
