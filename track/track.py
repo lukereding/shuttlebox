@@ -150,7 +150,7 @@ def create_empty_df(number_rows):
     df = pd.DataFrame(index=np.arange(0, number_rows), columns=('frame', 'x', 'y', 'fish') )
     return df
 
-def save_data(df, max_row = None, name):
+def save_data(df, max_row, name):
     if max_row is not None:
         df = df.iloc[1:max_row]
     try:
@@ -236,7 +236,7 @@ if __name__ == "__main__":
         # cv2.imshow('frame',frame)
         cv2.waitKey(5)
 cv2.destroyAllWindows()
-save_data(df, name = name)
+save_data(df, None, name)
 
 # this is stupid, but:
 df = pd.read_csv("footprints.csv")

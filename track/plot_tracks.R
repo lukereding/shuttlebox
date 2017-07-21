@@ -12,7 +12,7 @@ if(! csv_name %in% list.files(getwd())){
 found <- read_csv(csv_name) %>% filter(fish == "found")
 
 read_csv(csv_name) %>%
-  ggplot(aes(x = x, y = y)) +
+  ggplot(aes(x =  x, y = y)) +
   add_emoji("1f41f") +
   geom_path(aes(color = frame)) +
   # geom_point(data = found, aes(color = frame), size = 1) +
