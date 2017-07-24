@@ -96,7 +96,7 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     gray = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
 
     # at this point, let's restrict our search for the fish
-    if previous_location is not None or number_frames_without_fish < 50:
+    if previous_location is not None or number_frames_without_fish < 80:
         height, width = gray.shape
         circle_img = np.zeros((height, width), np.uint8)
         cv2.circle(circle_img, previous_location, 100, 1, thickness=-1)
@@ -105,7 +105,7 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     else:
         masked_data = gray
 
-    _, thresh = cv2.threshold(masked_data, 15, 255, cv2.THRESH_BINARY)
+    _, thresh = cv2.threshold(masked_data, 10, 255, cv2.THRESH_BINARY)
     contours = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
 
     #
@@ -139,7 +139,7 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     else:
         number_frames_without_fish += 1
         # cv2.putText(frame, str("ain't nobody home!!"), (200,200), font, 2,(124,23,199),2,cv2.LINE_AA)
-        if number_frames_without_fish < 50:
+        if number_frames_without_fish < 80:
             loc = previous_location
         else:
             loc = None
@@ -165,6 +165,7 @@ if __name__ == "__main__":
 
     # read in video, parse arguments
     filename = sys.argv[1]
+    print("using video: {}".format(filename))
     cap = cv2.VideoCapture(filename)
 
     # get video name
@@ -189,10 +190,7 @@ if __name__ == "__main__":
     df = create_empty_df(number_frames)
 
     # find the background of the image
-    if Path("background.jpg").is_file():
-        background = cv2.imread("background.jpg")
-    else:
-        background = find_background(cap)
+    background = find_background(cap)
 
     # Loop through frames
     frame_number = 1
@@ -239,7 +237,7 @@ cv2.destroyAllWindows()
 save_data(df, None, name)
 
 # this is stupid, but:
-df = pd.read_csv("footprints.csv")
+df = pd.read_csv("{}.csv".format(name))
 df = df.interpolate('akima')
 csv_name = "{}_interpolated.csv".format(name)
 df.to_csv(csv_name)
