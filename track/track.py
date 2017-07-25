@@ -154,7 +154,7 @@ def save_data(df, max_row, name):
     if max_row is not None:
         df = df.iloc[1:max_row]
     try:
-        df = df.interpolate(method='akima')
+        df = df.interpolate()
     except:
         x = "oops"
         # print("too many NAs to interpolate")
@@ -238,7 +238,7 @@ save_data(df, None, name)
 
 # this is stupid, but:
 df = pd.read_csv("{}.csv".format(name))
-df = df.interpolate('akima')
+df = df.interpolate()
 csv_name = "{}_interpolated.csv".format(name)
 df.to_csv(csv_name)
 # plot the results
