@@ -1,6 +1,7 @@
 require(tidyverse)
 require(viridis)
-require(emoGG)
+#require(emoGG)
+require(viridis)
 
 args <- commandArgs(TRUE)
 csv_name <- args[1]
@@ -22,7 +23,6 @@ name <- csv_name %>%
 
 df %>%
   ggplot(aes(x =  x, y = y)) +
-  add_emoji("1f41f") +
   geom_path(aes(color = frame)) + 
   scale_color_viridis(option = "A") +
   # geom_point(data = found, aes(color = frame), size = 1) +
