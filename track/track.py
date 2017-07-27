@@ -92,7 +92,7 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     """Returns the frame with the largest contour drawn on it. """
     # take difference image, blur, convert to grey, threshold, find contours
     diff = cv2.subtract(background, frame)
-    blurred = cv2.blur(diff, (7,7))
+    blurred = cv2.blur(diff, (5,5))
     gray = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
 
     # at this point, let's restrict our search for the fish
@@ -105,15 +105,15 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     else:
         masked_data = gray
 
-    _, thresh = cv2.threshold(masked_data, 10, 255, cv2.THRESH_BINARY)
+    _, thresh = cv2.threshold(masked_data, 15, 255, cv2.THRESH_BINARY)
     contours = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
 
-    #
+
     # cv2.imshow('thresh', thresh)
     # cv2.imshow('gray', diff)
 
     # we now add the step of excluding contours that are too big or too small
-    contours_right_size = [c for c in contours if cv2.contourArea(c) < 1000 and cv2.contourArea(c) > 100]
+    contours_right_size = [c for c in contours if cv2.contourArea(c) < 1000 and cv2.contourArea(c) > 25]
 
     # we also exclude contours that are too long
     contours_right_size_shape = [c for c in contours_right_size if get_aspect_ratio(c) < 10 and get_aspect_ratio(c) > 0.2]
@@ -144,7 +144,7 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
         else:
             loc = None
 
-    return frame, loc, number_frames_without_fish
+    return frame, loc, number_frames_without_fish, thresh, blurred
 
 def create_empty_df(number_rows):
     df = pd.DataFrame(index=np.arange(0, number_rows), columns=('frame', 'x', 'y', 'fish') )
@@ -184,7 +184,7 @@ if __name__ == "__main__":
     """.format(width, height, number_frames, fps))
 
     fourcc = cv2.VideoWriter_fourcc(*'avc1')
-    out = cv2.VideoWriter('{}_tracked.avi'.format(name), fourcc, 30, (int(width), int(height)), True)
+    out = cv2.VideoWriter('{}_tracked.avi'.format(name), fourcc, 30, (int(width), int(height)*3), True)
 
     # create empty dataframe to populate
     df = create_empty_df(number_frames)
@@ -211,7 +211,7 @@ if __name__ == "__main__":
         _, frame = cap.read()
 
         # update background image every x frames
-        if frame_number % 50 ==  0:
+        if frame_number % 25 ==  0:
             background = add_to_background(frame, background, 0.05)
             # print("frame {}".format(frame_number))
 
@@ -219,7 +219,7 @@ if __name__ == "__main__":
             save_data(df, frame_number-2, name)
 
         # print("previous location: {}".format(previous_location))
-        frame, previous_location, frames_missing = draw_largest_contour(frame, previous_location, frames_missing)
+        frame, previous_location, frames_missing, thresh, diff = draw_largest_contour(frame, previous_location, frames_missing)
 
         # add location to DataFrame
         if frames_missing > 0:
@@ -229,7 +229,12 @@ if __name__ == "__main__":
 
         previous_frame = frame
 
-        out.write(frame)
+        # cv2.imshow('frame', frame)
+        some = np.vstack((frame, diff))
+        thresh_3 = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
+        both = np.vstack((some, thresh_3))
+
+        out.write(both)
 
         # cv2.imshow('frame',frame)
         cv2.waitKey(5)

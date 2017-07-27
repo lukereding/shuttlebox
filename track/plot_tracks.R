@@ -16,14 +16,14 @@ df <- read_csv(csv_name)
 found <- df %>% filter(fish == "found")
 
 
-name <- csv_name %>% 
-  stringr::str_split("_") %>% 
-  magrittr::extract2(1) %>% 
-  magrittr::extract(1)
+name <- csv_name %>%
+  stringr::str_split("_") %>%
+  magrittr::extract2(1) %>%
+  magrittr::extract(length(.) - 1)
 
 df %>%
   ggplot(aes(x =  x, y = y)) +
-  geom_path(aes(color = frame)) + 
+  geom_path(aes(color = frame)) +
   scale_color_viridis(option = "A") +
   # geom_point(data = found, aes(color = frame), size = 1) +
   theme_minimal() +
