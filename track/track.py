@@ -10,6 +10,49 @@ from pathlib import Path
 import progressbar
 import subprocess
 
+# create a hard-coded dict that defines the contours of each zone
+zones = {
+    "LT_top": np.array([[88, 67], [461, 67], [464, 143], [200, 146], [203, 184], [94, 179]], dtype = np.int32),
+    "LS": np.array([[94, 179], [203, 184], [216, 477], [108, 518]], dtype = np.int32),
+    "LT_bottom": np.array([[108, 518], [216, 477], [222, 550], [477, 538], [481, 614], [110, 632]], dtype = np.int32),
+    "LE": np.array([[222, 550], [477, 538], [464, 143], [200, 146], [203, 184], [216, 477]], dtype = np.int32),
+    "CE": np.array([[464, 143], [779, 142], [792, 524], [477, 538]], dtype = np.int32),
+    "CT_top": np.array([[461, 67], [775, 68], [779, 142], [464, 143]], dtype = np.int32),
+    "CT_bottom": np.array([[477, 538], [481, 614], [795, 601], [792, 524]], dtype = np.int32),
+    "RT_top": np.array([[775, 68], [779, 142], [1061, 139], [1062, 188], [1183, 161], [1180, 69]], dtype = np.int32),
+    "RT_bottom": np.array([[792, 524], [795, 601], [1191, 583], [1186, 479], [1068, 467], [1068, 511]], dtype = np.int32),
+    "RE": np.array([[779, 142], [1061, 139], [1068, 511], [792, 524]], dtype = np.int32),
+    "RS": np.array([[1062, 188], [1183, 161], [1186, 479], [1068, 467]], dtype = np.int32)
+}
+
+def check_zones(background, zone_dict):
+    """Print background with the zones overlaid."""
+    for zone, contour in zone_dict.items():
+        print(zone)
+        print(contour)
+        # generate random color
+        color = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255))
+        cv2.drawContours(background, [contour], 0, color , -1)
+    return background
+
+def get_zone(point, zone_dict):
+    """Return the zone the fish is currently in. Point must be a tuple."""
+    if point is None:
+        return "unknown"
+
+    # loop through the dict
+    location = "unknown"
+    for zone, countour in zone_dict.items():
+        dist = cv2.pointPolygonTest(countour, point, False)
+        # if positive, point is inside the countour
+        if dist > 0:
+            location = zone
+            break
+    # hack off the "top" or "bottom"
+    # note that if the point in not within any of the zones,
+    # or at the border of zones,
+    # this returns "unknown"
+    return location.split("_")[0]
 
 def get_centroid(contour):
     try:
@@ -92,7 +135,7 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     """Returns the frame with the largest contour drawn on it. """
     # take difference image, blur, convert to grey, threshold, find contours
     diff = cv2.subtract(background, frame)
-    blurred = cv2.blur(diff, (5,5))
+    blurred = cv2.blur(diff, (7,7))
     gray = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
 
     # at this point, let's restrict our search for the fish
@@ -105,15 +148,15 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     else:
         masked_data = gray
 
-    _, thresh = cv2.threshold(masked_data, 15, 255, cv2.THRESH_BINARY)
+    _, thresh = cv2.threshold(masked_data, 10, 255, cv2.THRESH_BINARY)
     contours = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
 
-
+    #
     # cv2.imshow('thresh', thresh)
     # cv2.imshow('gray', diff)
 
     # we now add the step of excluding contours that are too big or too small
-    contours_right_size = [c for c in contours if cv2.contourArea(c) < 1000 and cv2.contourArea(c) > 25]
+    contours_right_size = [c for c in contours if cv2.contourArea(c) < 1000 and cv2.contourArea(c) > 100]
 
     # we also exclude contours that are too long
     contours_right_size_shape = [c for c in contours_right_size if get_aspect_ratio(c) < 10 and get_aspect_ratio(c) > 0.2]
@@ -144,7 +187,7 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
         else:
             loc = None
 
-    return frame, loc, number_frames_without_fish, thresh, blurred
+    return frame, loc, number_frames_without_fish
 
 def create_empty_df(number_rows):
     df = pd.DataFrame(index=np.arange(0, number_rows), columns=('frame', 'x', 'y', 'fish') )
@@ -184,7 +227,7 @@ if __name__ == "__main__":
     """.format(width, height, number_frames, fps))
 
     fourcc = cv2.VideoWriter_fourcc(*'avc1')
-    out = cv2.VideoWriter('{}_tracked.avi'.format(name), fourcc, 30, (int(width), int(height)*3), True)
+    out = cv2.VideoWriter('{}_tracked.avi'.format(name), fourcc, 30, (int(width), int(height)), True)
 
     # create empty dataframe to populate
     df = create_empty_df(number_frames)
@@ -211,15 +254,16 @@ if __name__ == "__main__":
         _, frame = cap.read()
 
         # update background image every x frames
-        if frame_number % 25 ==  0:
+        if frame_number % 50 ==  0:
             background = add_to_background(frame, background, 0.05)
             # print("frame {}".format(frame_number))
 
         if frame_number % 200 == 0:
             save_data(df, frame_number-2, name)
 
-        # print("previous location: {}".format(previous_location))
-        frame, previous_location, frames_missing, thresh, diff = draw_largest_contour(frame, previous_location, frames_missing)
+        frame, previous_location, frames_missing = draw_largest_contour(frame, previous_location, frames_missing)
+
+        # zone_location = get_zone(previous_location ,zones)
 
         # add location to DataFrame
         if frames_missing > 0:
@@ -229,21 +273,29 @@ if __name__ == "__main__":
 
         previous_frame = frame
 
-        # cv2.imshow('frame', frame)
-        some = np.vstack((frame, diff))
-        thresh_3 = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
-        both = np.vstack((some, thresh_3))
-
-        out.write(both)
+        out.write(frame)
 
         # cv2.imshow('frame',frame)
         cv2.waitKey(5)
 cv2.destroyAllWindows()
 save_data(df, None, name)
 
-# this is stupid, but:
+# this is stupid, but at the end, read back in the dataframe, interpolate points, find zones, then save
+
+# read in data frame
 df = pd.read_csv("{}.csv".format(name))
+
+# interpolate x and y point
 df = df.interpolate()
+
+# get the zone for each point
+zone_list = [None] * df.shape[0]
+for index, row in df.iterrows():
+    point = (row['x'], row['y'])
+    zone = get_zone(point, zones)
+    zone_list[index] = zone
+
+df['zone'] = zone_list
 csv_name = "{}_interpolated.csv".format(name)
 df.to_csv(csv_name)
 # plot the results
