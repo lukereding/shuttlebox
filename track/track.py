@@ -6,6 +6,7 @@ import pandas as pd
 import sys
 import pdb
 from pathlib import Path
+import json
 
 import progressbar
 import subprocess
@@ -65,7 +66,7 @@ def get_centroid(contour):
 
 def out_of_bounds(contour):
     x,y = get_centroid(contour)
-    if y > 550 or y < 140 or x > 1150 or x < 150:
+    if y > 600 or y < 110 or x > 1150 or x < 130:
         return True
     else:
         return False
@@ -85,12 +86,23 @@ def distance_to_middle(contour):
     dist = abs(cX - middle_of_tank[0])
     return dist
 
-def get_video_info(capture):
+def get_video_info(capture, video_name, save_json = True):
     width, height = cap.get(3), cap.get(4)
     number_frames = int(cap.get(7))
     fps = cap.get(5)
-    return width, height, number_frames, fps
 
+    if save_json:
+        data = {
+        'name' : video_name,
+        'width' : width,
+        'height' : height,
+        'number_frames' : number_frames,
+        'fps' : fps
+        }
+        with open("{}.txt".format(video_name), 'w') as outfile:
+            json.dump(data, outfile)
+
+    return width, height, number_frames, fps
 
 def add_to_background(frame, old_background_image, amount = 0.05):
     """add frame to the background image called old_background_image, return updated image."""
@@ -156,7 +168,7 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     # cv2.imshow('gray', diff)
 
     # we now add the step of excluding contours that are too big or too small
-    contours_right_size = [c for c in contours if cv2.contourArea(c) < 1000 and cv2.contourArea(c) > 100]
+    contours_right_size = [c for c in contours if cv2.contourArea(c) < 1000 and cv2.contourArea(c) > 80]
 
     # we also exclude contours that are too long
     contours_right_size_shape = [c for c in contours_right_size if get_aspect_ratio(c) < 10 and get_aspect_ratio(c) > 0.2]
@@ -211,6 +223,9 @@ if __name__ == "__main__":
     print("using video: {}".format(filename))
     cap = cv2.VideoCapture(filename)
 
+    # record video of the tracked output?
+    record = True
+
     # get video name
     name = filename.split('.', 1)[-2]
 
@@ -218,7 +233,7 @@ if __name__ == "__main__":
     test_video(cap)
 
     # print things to the user
-    width, height, number_frames, fps = get_video_info(cap)
+    width, height, number_frames, fps = get_video_info(cap, name)
 
     print("""
     video size: {} x {}
@@ -226,8 +241,9 @@ if __name__ == "__main__":
     fps: {}
     """.format(width, height, number_frames, fps))
 
-    fourcc = cv2.VideoWriter_fourcc(*'avc1')
-    out = cv2.VideoWriter('{}_tracked.avi'.format(name), fourcc, 30, (int(width), int(height)), True)
+    if record:
+        fourcc = cv2.VideoWriter_fourcc(*'avc1')
+        out = cv2.VideoWriter('{}_tracked.avi'.format(name), fourcc, 30, (int(width), int(height)), True)
 
     # create empty dataframe to populate
     df = create_empty_df(number_frames)
@@ -273,11 +289,14 @@ if __name__ == "__main__":
 
         previous_frame = frame
 
-        out.write(frame)
+        if record:
+            out.write(frame)
 
         # cv2.imshow('frame',frame)
         cv2.waitKey(5)
 cv2.destroyAllWindows()
+if record:
+    out.release()
 save_data(df, None, name)
 
 # this is stupid, but at the end, read back in the dataframe, interpolate points, find zones, then save
