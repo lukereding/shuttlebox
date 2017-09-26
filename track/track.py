@@ -255,7 +255,7 @@ if __name__ == "__main__":
 
         # update background image every x frames
         if frame_number % 50 ==  0:
-            background = add_to_background(frame, background, 0.05)
+            background = add_to_background(frame, background, 0.1)
             # print("frame {}".format(frame_number))
 
         if frame_number % 200 == 0:
@@ -295,9 +295,17 @@ for index, row in df.iterrows():
     zone = get_zone(point, zones)
     zone_list[index] = zone
 
+# add zone to DataFrame
 df['zone'] = zone_list
+
+# coerse itnerpolated floats to ints
+df.x = df.x.astype(int)
+df.y = df.y.astype(int)
+
+# write the csv
 csv_name = "{}_interpolated.csv".format(name)
 df.to_csv(csv_name)
+
 # plot the results
 bashCommand = "Rscript plot_tracks.R {}".format(csv_name)
 process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)

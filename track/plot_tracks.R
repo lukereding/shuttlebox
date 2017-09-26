@@ -7,9 +7,9 @@ args <- commandArgs(TRUE)
 csv_name <- args[1]
 print(csv_name)
 
-if(! csv_name %in% list.files(getwd())){
-  stop(paste0("need ", csv_name, " in the current directory"))
-}
+#if(! csv_name %in% list.files(getwd())){
+#  stop(paste0("need ", csv_name, " in the current directory"))
+#}
 
 df <- read_csv(csv_name)
 
@@ -18,8 +18,8 @@ found <- df %>% filter(fish == "found")
 
 name <- csv_name %>%
   stringr::str_split("_") %>%
-  magrittr::extract2(1) %>%
-  magrittr::extract(length(.) - 1)
+  pluck(1) %>%
+  pluck(length(.) - 1)
 
 df %>%
   ggplot(aes(x =  x, y = y)) +
@@ -54,3 +54,17 @@ df %>%
   theme_minimal() +
   ggtitle(name, subtitle = "each plot represents ~10 minutes of the trial")
 ggsave(paste0(name, "_hex.pdf"), height = 5, width = 7)
+
+
+df %>% 
+  mutate(interval = cut_number(frame, 6)) %>%
+  group_by(interval, zone) %>%
+  count %>%
+  ggplot(aes(x = n)) +
+  geom_bar() +
+  theme_minimal() +
+  facet_wrap(~interval) +
+  ggtitle(name, subtitle = "each plot represents ~10 minutes of the trial")
+ggsave(paste0(name, "_by_zone.pdf"), height = 5, width = 7)
+
+  
