@@ -68,3 +68,13 @@ df %>%
   ggthemes::scale_fill_ptol(guide = F) +
   ggtitle(name, subtitle = "each plot represents ~10 minutes of the trial")
 ggsave(paste0(name, "_by_zone.png"), height = 5, width = 7)
+
+# joyplot
+library(ggridges)
+df %>%
+  mutate(interval = cut_number(frame, 30)) %>%
+  filter(! is.na(interval)) %>%
+  ggplot(aes(x = x, y = interval)) + 
+  geom_density_ridges2(color = "white") +
+  theme_ridges()
+ggsave(paste0(name, "_ridgeplot.png"), height = 5, width = 7)
