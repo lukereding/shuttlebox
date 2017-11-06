@@ -26,6 +26,9 @@ zones = {
     "RS": np.array([[1062, 188], [1183, 161], [1186, 479], [1068, 467]], dtype = np.int32)
 }
 
+def print_frame(frame_number):
+    print("exiting on frame number {}".format(frame_number))
+
 def check_zones(background, zone_dict):
     """Print background with the zones overlaid."""
     for zone, contour in zone_dict.items():
@@ -146,7 +149,7 @@ def get_aspect_ratio(contour):
 def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     """Returns the frame with the largest contour drawn on it. """
     # take difference image, blur, convert to grey, threshold, find contours
-    diff = cv2.subtract(background, frame)
+    diff = cv2.subtract(frame, background)
     blurred = cv2.blur(diff, (7,7))
     gray = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
 
@@ -163,7 +166,6 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     _, thresh = cv2.threshold(masked_data, 10, 255, cv2.THRESH_BINARY)
     contours = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
 
-    #
     # cv2.imshow('thresh', thresh)
     # cv2.imshow('gray', diff)
 
@@ -264,7 +266,7 @@ if __name__ == "__main__":
     bar = progressbar.ProgressBar()
 
     # while frame_number < number_frames:
-    for i in bar(range(1, number_frames - 2)):
+    for i in bar(range(1, number_frames - 2, 10)):
         frame_number = int(cap.get(1))
 
         _, frame = cap.read()

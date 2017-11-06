@@ -1,5 +1,4 @@
-require(tidyverse)
-require(viridis)
+source("~/Documents/random_scripts/plotting_functions.R")
 
 args <- commandArgs(TRUE)
 csv_name <- args[1]
@@ -10,6 +9,9 @@ print(csv_name)
 #}
 
 df <- read_csv(csv_name)
+
+# if is temporary; only use if I'm tracking every 10th frame
+df <- slice(df, 0:10800)
 
 found <- df %>% filter(fish == "found")
 
@@ -65,7 +67,7 @@ df %>%
   geom_col(aes(fill = zone)) +
   theme_minimal() +
   facet_wrap(~interval) +
-  ggthemes::scale_fill_ptol(guide = F) +
+  scale_fill_carto(guide = F) +
   ggtitle(name, subtitle = "each plot represents ~10 minutes of the trial")
 ggsave(paste0(name, "_by_zone.png"), height = 5, width = 7)
 
