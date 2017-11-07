@@ -170,7 +170,7 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     # cv2.imshow('gray', diff)
 
     # we now add the step of excluding contours that are too big or too small
-    contours_right_size = [c for c in contours if cv2.contourArea(c) < 1000 and cv2.contourArea(c) > 80]
+    contours_right_size = [c for c in contours if cv2.contourArea(c) < 1000 and cv2.contourArea(c) > 150]
 
     # we also exclude contours that are too long
     contours_right_size_shape = [c for c in contours_right_size if get_aspect_ratio(c) < 10 and get_aspect_ratio(c) > 0.2]
@@ -301,7 +301,7 @@ if record:
     out.release()
 save_data(df, None, name)
 
-# this is stupid, but at the end, read back in the dataframe, interpolate points, find zones, then save
+# this is stupid, but at the end, read back in the dataframe, interpolate points, find zones, then save as new '_interpolated' dataframe
 
 # read in data frame
 df = pd.read_csv("{}.csv".format(name))

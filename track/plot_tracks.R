@@ -21,6 +21,12 @@ name <- csv_name %>%
   purrr::pluck(1) %>%
   purrr::pluck(length(.) - 1)
 
+# OR, generate a nonsense name
+# name <- Reduce(paste0, sample(letters, 10, replace = T))
+
+# or use the full path name
+name <- csv_name
+
 # path of the fish
 df %>%
   ggplot(aes(x =  x, y = y)) +
