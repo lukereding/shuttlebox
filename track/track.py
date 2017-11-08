@@ -146,7 +146,7 @@ def get_aspect_ratio(contour):
     aspect_ratio = float(w)/h
     return aspect_ratio
 
-def draw_largest_contour(frame, previous_location, number_frames_without_fish):
+def draw_largest_contour(frame, previous_location, number_frames_without_fish, number_frames_without_fish_threshold = 8):
     """Returns the frame with the largest contour drawn on it. """
     # take difference image, blur, convert to grey, threshold, find contours
     diff = cv2.subtract(frame, background)
@@ -154,7 +154,8 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     gray = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
 
     # at this point, let's restrict our search for the fish
-    if previous_location is not None or number_frames_without_fish < 80:
+    # note that the '8' here should be replaced with a higher number if we revert to tracking every frame instead of every 10th frame
+    if previous_location is not None or number_frames_without_fish < number_frames_without_fish_threshold:
         height, width = gray.shape
         circle_img = np.zeros((height, width), np.uint8)
         cv2.circle(circle_img, previous_location, 100, 1, thickness=-1)
@@ -163,9 +164,10 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     else:
         masked_data = gray
 
-    _, thresh = cv2.threshold(masked_data, 10, 255, cv2.THRESH_BINARY)
+    _, thresh = cv2.threshold(masked_data, 8, 255, cv2.THRESH_BINARY)
     contours = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
 
+    # to show the difference image while tracking:
     # cv2.imshow('thresh', thresh)
     # cv2.imshow('gray', diff)
 
@@ -196,7 +198,7 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     else:
         number_frames_without_fish += 1
         # cv2.putText(frame, str("ain't nobody home!!"), (200,200), font, 2,(124,23,199),2,cv2.LINE_AA)
-        if number_frames_without_fish < 80:
+        if number_frames_without_fish < number_frames_without_fish_threshold:
             loc = previous_location
         else:
             loc = None
@@ -204,7 +206,7 @@ def draw_largest_contour(frame, previous_location, number_frames_without_fish):
     return frame, loc, number_frames_without_fish
 
 def create_empty_df(number_rows):
-    df = pd.DataFrame(index=np.arange(0, number_rows), columns=('frame', 'x', 'y', 'fish') )
+    df = pd.DataFrame(index=[x for x in np.arange(0, number_rows) if x % 10 == 0], columns=('frame', 'x', 'y', 'fish') )
     return df
 
 def save_data(df, max_row, name):
@@ -266,39 +268,41 @@ if __name__ == "__main__":
     bar = progressbar.ProgressBar()
 
     # while frame_number < number_frames:
-    for i in bar(range(1, number_frames - 2, 10)):
+    for i in bar(range(1, number_frames - 2)):
 
-        # set the frame number to i and grab the frame
-        frame_number = i
-        cap.set(1) = frame_number
+        if i % 10 == 0:
 
-        _, frame = cap.read()
+            # set the frame number to i and grab the frame
+            frame_number = i
+            cap.set(1, i)
 
-        # update background image every x frames
-        if frame_number % 150 ==  0:
-            background = add_to_background(frame, background, 0.05)
-            # print("frame {}".format(frame_number))
+            _, frame = cap.read()
 
-        if frame_number % 200 == 0:
-            save_data(df, frame_number-2, name)
+            # update background image every x frames
+            if frame_number % 150 ==  0:
+                background = add_to_background(frame, background, 0.05)
+                # print("frame {}".format(frame_number))
 
-        frame, previous_location, frames_missing = draw_largest_contour(frame, previous_location, frames_missing)
+            # if frame_number % 200 == 0:
+            #     save_data(df, frame_number-2, name)
 
-        # zone_location = get_zone(previous_location ,zones)
+            frame, previous_location, frames_missing = draw_largest_contour(frame, previous_location, frames_missing)
 
-        # add location to DataFrame
-        if frames_missing > 0:
-            df.loc[frame_number] = [frame_number, np.nan, np.nan, "missing"]
-        elif frames_missing == 0:
-            df.loc[frame_number] = [frame_number, previous_location[0], previous_location[1], "found"]
+            # zone_location = get_zone(previous_location ,zones)
 
-        previous_frame = frame
+            # add location to DataFrame
+            if frames_missing > 0:
+                df.loc[frame_number] = [frame_number, np.nan, np.nan, "missing"]
+            elif frames_missing == 0:
+                df.loc[frame_number] = [frame_number, previous_location[0], previous_location[1], "found"]
 
-        if record:
-            out.write(frame)
+            previous_frame = frame
 
-        # cv2.imshow('frame',frame)
-        cv2.waitKey(5)
+            if record:
+                out.write(frame)
+
+            # cv2.imshow('frame',frame)
+            # cv2.waitKey(5)
 cv2.destroyAllWindows()
 if record:
     out.release()
@@ -327,6 +331,6 @@ csv_name = "{}_interpolated.csv".format(name)
 df.to_csv(csv_name)
 
 # plot the results
-bashCommand = "Rscript plot_tracks.R {}".format(csv_name)
-process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
-output, error = process.communicate()
+# bashCommand = "Rscript plot_tracks.R {}".format(csv_name)
+# process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+# output, error = process.communicate()
