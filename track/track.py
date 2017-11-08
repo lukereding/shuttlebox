@@ -267,7 +267,10 @@ if __name__ == "__main__":
 
     # while frame_number < number_frames:
     for i in bar(range(1, number_frames - 2, 10)):
-        frame_number = int(cap.get(1))
+
+        # set the frame number to i and grab the frame
+        frame_number = i
+        cap.set(1) = frame_number
 
         _, frame = cap.read()
 

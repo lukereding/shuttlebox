@@ -10,9 +10,6 @@ print(csv_name)
 
 df <- read_csv(csv_name)
 
-# if is temporary; only use if I'm tracking every 10th frame
-df <- slice(df, 0:10800)
-
 found <- df %>% filter(fish == "found")
 
 # get the name of the fish for the trial
@@ -82,7 +79,7 @@ library(ggridges)
 df %>%
   mutate(interval = cut_number(frame, 30)) %>%
   filter(! is.na(interval)) %>%
-  ggplot(aes(x = x, y = interval)) + 
+  ggplot(aes(x = x, y = interval)) +
   geom_density_ridges2(color = "white") +
   theme_ridges()
 ggsave(paste0(name, "_ridgeplot.png"), height = 5, width = 7)
