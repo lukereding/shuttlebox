@@ -20,8 +20,8 @@ def read_video(video_filename):
 
     # check the fps
     fps = cap.get(5)
-    # if fps != 30:
-        # sys.exit("tell kelly that video {} is {} fps.".format(video_filename, fps))
+    if fps != 30:
+        sys.exit("tell kelly that video {} is {} fps.".format(video_filename, fps))
     return cap
 
 def write_results(location_tuples, name, path):
@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
     locations = []
 
-    for frame_number in range(0, 3602, 5):
+    for frame_number in range(0, 60*60*30, 150):
 
         location_current_frame = display_frame(cap, frame_number + 1)
 
@@ -78,5 +78,5 @@ if __name__ == "__main__":
 
         print(locations)
 
-        if frame_number % 50 == 0 and frame_number != 0:
+        if frame_number % 3000 == 0 and frame_number != 0:
             write_results(locations, filename.split(".")[-2], path)
