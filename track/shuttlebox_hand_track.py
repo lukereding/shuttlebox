@@ -63,20 +63,32 @@ if __name__ == "__main__":
 
     # read in the video name
     video_filename = sys.argv[1]
+
+    startframe_arg = sys.argv[2]
+    start_frame = int(startframe_arg)
+
     check_video(video_filename)
     cap = read_video(video_filename)
+
 
     path, filename = os.path.split(video_filename)
 
     locations = []
 
-    for frame_number in range(0, 60*60*30, 150):
+    total_frames = int(cap.get(7))
+    print("there are {} total frames".format(total_frames))
+    counter = 0
 
-        location_current_frame = display_frame(cap, frame_number + 1)
-
+    for frame_number in range(start_frame, total_frames, 150):
+        try:
+            location_current_frame = display_frame(cap, frame_number + 1)
+        except:
+            location_current_frame = (NA, NA)
         locations.append(location_current_frame)
 
-        print(locations)
+#        print(locations)
+        counter += 1
 
-        if frame_number % 3000 == 0 and frame_number != 0:
+        if counter % 50 == 0 and frame_number != 0:
             write_results(locations, filename.split(".")[-2], path)
+    write_results(locations, filename.split(".")[-2], path)
