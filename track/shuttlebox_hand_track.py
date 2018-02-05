@@ -59,6 +59,14 @@ def display_frame(capture, frame_number):
             cv2.destroyAllWindows()
             return locs[0]
 
+
+def csv_exists(filename, path):
+    if os.path.exists(os.path.join(filename, path)):
+        return True
+    else:
+        return False
+
+
 if __name__ == "__main__":
 
     # read in the video name
@@ -70,13 +78,24 @@ if __name__ == "__main__":
     check_video(video_filename)
     cap = read_video(video_filename)
 
-
     path, filename = os.path.split(video_filename)
 
-    locations = []
+    # see whether the csv file already exists
+    if csv_exists(filename, path):
+        df = pd.read_csv(os.path.join(path, filename))
+        x = df['x']
+        y = df['y']
+        frames = df['frame_number']
+        loctions = list(zip(x,y))
+        frames_scored = frames[-1] * 150
+        start_frame = start_frame + frames_scored
+        print("\nyou are starting to score on frame {}\n".format(start_frame))
+    else:
+        locations = []
 
     total_frames = int(cap.get(7))
     print("there are {} total frames".format(total_frames))
+
     counter = 0
 
     for frame_number in range(start_frame, total_frames, 150):
@@ -84,9 +103,9 @@ if __name__ == "__main__":
             location_current_frame = display_frame(cap, frame_number + 1)
         except:
             location_current_frame = (NA, NA)
+
         locations.append(location_current_frame)
 
-#        print(locations)
         counter += 1
 
         if counter % 50 == 0 and frame_number != 0:
