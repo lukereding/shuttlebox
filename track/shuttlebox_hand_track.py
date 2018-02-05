@@ -60,8 +60,9 @@ def display_frame(capture, frame_number):
             return locs[0]
 
 
-def csv_exists(filename, path):
-    if os.path.exists(os.path.join(filename, path)):
+def csv_exists(csv_path):
+    if os.path.exists(csv_path):
+        print("looks like you've tried scoring this video before\n")
         return True
     else:
         return False
@@ -80,9 +81,11 @@ if __name__ == "__main__":
 
     path, filename = os.path.split(video_filename)
 
+    csv_path = os.path.join(path, filename.split(".")[-2] + ".csv")
+
     # see whether the csv file already exists
-    if csv_exists(filename, path):
-        df = pd.read_csv(os.path.join(path, filename))
+    if csv_exists(csv_path):
+        df = pd.read_csv(csv_path)
         x = df['x']
         y = df['y']
         frames = df['frame_number']
