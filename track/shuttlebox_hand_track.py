@@ -89,8 +89,9 @@ if __name__ == "__main__":
         x = df['x']
         y = df['y']
         frames = df['frame_number']
-        loctions = list(zip(x,y))
-        frames_scored = frames[-1] * 150
+        frames = frames.tolist()
+        locations = list(zip(x,y))
+        frames_scored = (frames[-1] + 1) * 150
         start_frame = start_frame + frames_scored
         print("\nyou are starting to score on frame {}\n".format(start_frame))
     else:
@@ -105,12 +106,12 @@ if __name__ == "__main__":
         try:
             location_current_frame = display_frame(cap, frame_number + 1)
         except:
-            location_current_frame = (NA, NA)
+            location_current_frame = (np.nan, np.nan)
 
         locations.append(location_current_frame)
 
         counter += 1
 
-        if counter % 50 == 0 and frame_number != 0:
+        if counter % 20 == 0 and frame_number != 0:
             write_results(locations, filename.split(".")[-2], path)
     write_results(locations, filename.split(".")[-2], path)
